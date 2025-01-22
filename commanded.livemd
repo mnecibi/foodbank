@@ -1,0 +1,290 @@
+<!-- livebook:{"file_entries":[{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/mnecibi/Documents/MyProjects/Meetups/Commanded/meetup_cologne.jpeg"},"name":"meetup_cologne.jpeg","type":"file"}]} -->
+
+# Commanded: From theory to reality
+
+## Welcome
+
+![image](/Users/mnecibi/Documents/MyProjects/Meetups/Commanded/meetup_cologne.jpeg)
+
+## About us
+
+### Mehdi Necibi
+
+<!-- livebook:{"break_markdown":true} -->
+
+```mermaid
+timeline
+    section Education - 5 years
+      Computer science student : Discovered func-programming (Ocaml)
+    section Java - 5 years
+      Fullstack Developer: Java + JS Frontend frameworks + Adobe Products
+    section Elixir - 2 years
+      Fullstack Developer: Elixir + Phoenix/Liveview + Docker/Kubernetes
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+#### Arne
+
+## Inspired Consulting GmbH
+
+```mermaid
+pie title Projects Programming Languages
+    "Elixir" : 40
+    "Other (Java, Go ..etc)" : 60
+```
+
+## CQRS/ES
+
+* CQRS: Command Query Responsibility Segregation
+* ES: Event Sourcing
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Traditional System
+
+```mermaid
+block-beta
+columns 1
+  block:ID
+    B["Command Operations
+(insert/update/delete)"]
+    C["Query Operations
+(read/search/scan)"]
+  end
+  space
+  D[("Database")]
+  B --> D
+  C --> D
+```
+
+## ES
+
+### Event Sourcing
+
+```mermaid
+block-beta
+columns 1
+  block:CO
+    A["Store Operations"]
+    CD[("Event Store")]
+  end
+  space
+  block:QO
+    B["Query Operations
+(read/search/scan)"]
+    QD[("Query DB")]
+  end
+  A --> CD 
+  B --> QD
+  CD --> QD
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+##### Real examples:
+
+* Git
+  * State: Files
+  * Events: Commits
+
+## CQRS
+
+### CQRS System
+
+```mermaid
+block-beta
+columns 1
+  block:CO
+    A["Command Operations
+(insert/update/delete)"]
+    CD[("Command DB")]
+  end
+  space
+  block:QO
+    B["Query Operations
+(read/search/scan)"]
+    QD[("Query DB")]
+  end
+  A --> CD 
+  B --> QD
+  QD --> CD
+```
+
+## Commanded
+
+CQRS + EventSourcing
+
+* Commands
+* Events
+* Aggregate
+* Projections
+
+## Some code
+
+#### Commands
+
+```elixir
+defmodule Command.CreateTour do
+  use TypedStruct
+
+  typedstruct do
+    field(:tour_id, binary())
+    field(:name, String.t())
+  end
+end
+```
+
+#### Events
+
+```elixir
+defmodule Event.TourCreated do
+  use TypedStruct
+
+  typedstruct do
+    field(:tour_id, binary())
+    field(:name, String.t())
+  end
+end
+```
+
+#### Aggregate
+
+<!-- livebook:{"break_markdown":true} -->
+
+Domain Driven Design
+
+* State
+* Gate Keeper
+
+```elixir
+defmodule Foodbank.Tour.Aggregate do
+  use TypedStruct
+
+  typedstruct do
+    field(:tour_id, binary())
+    field(:name, String.t())
+  end
+
+  def execute(_, %Command.CreateTour{tour_id: tour_id, name: name}) do
+    %Event.TourCreated{tour_id: tour_id, name: name}
+  end
+
+  def apply(_, %Event.TourCreated{} = event) do
+    %__MODULE__{tour_id: event.tour_id, name: event.name}
+  end
+end
+
+```
+
+## Router
+
+```elixir
+defmodule Foodbank.Router do
+  use Commanded.Commands.Router, application: Foodbank.Commanded
+
+  identify(Foodbank.Tour.Aggregate, by: :tour_id, prefix: "foodbank__tour_")
+
+  dispatch([Command.CreateTour], to: Foodbank.Tour.Aggregate)
+end
+```
+
+#### Let's create a tour
+
+```elixir
+ %Command.CreateTour{
+  tour_id: Ecto.UUID.generate(),
+  name: "My Tour 2"
+}
+|> Foodbank.Router.dispatch()
+```
+
+Our events
+
+```elixir
+Foodbank.EventStore.read_all_streams_forward()
+```
+
+### Create Tables from Events
+
+```elixir
+defmodule Foodbank.DBTour do
+  use Ecto.Schema
+  use TypedEctoSchema
+  import Ecto.Changeset
+  
+  @primary_key {:tour_id, Ecto.UUID, autogenerate: false}
+  typed_schema "tours" do
+    field :name, :string
+  end
+
+  def changeset(tour \\ %__MODULE__{}, attrs) do
+    tour
+    |> cast(attrs, __schema__(:fields))
+  end
+end
+
+defmodule Migrations.CreateTour do
+  use Ecto.Migration
+
+  def change do
+    create table(:tours, primary_key: false) do
+      add(:tour_id, :uuid, primary_key: true)
+      add(:name, :name)
+    end
+  end
+end
+
+Ecto.Migrator.up(Foodbank.Repo, 1, Migrations.CreateTour)
+```
+
+Populate the `tours` table using a Projector
+
+```elixir
+defmodule Foodbank.Tour.Projector do
+  alias Foodbank.DBTour
+
+  alias Event.TourCreated
+
+  use Commanded.Projections.Ecto, name: "TourProjection", repo: Foodbank.Repo
+
+  project(%TourCreated{} = event, _, fn multi ->
+    Ecto.Multi.insert(multi, :tour, %DBTour{tour_id: event.tour_id, name: event.name})
+  end)
+end
+```
+
+```elixir
+Foodbank.Tour.Projector.start_link()
+```
+
+```elixir
+Foodbank.DBTour |> Foodbank.Repo.all()
+```
+
+Compare Commanded with Other Tools
+
+Commanded
+
+* Event Ordering
+* Consistency
+* Sepration of conserns (Data model do not leak from one use case to another)
+
+Bonus Topics
+
+* Auditing
+* Data security (GDPR)
+* Authentication
+* Trackability Tracability
+* Statistics
+
+<!-- livebook:{"break_markdown":true} -->
+
+* Reference Tafel - Reality
+
+Problems and Pros
+
+* 6 million events (and the problems with that)
+*
+
+<!-- livebook:{"offset":4890,"stamp":{"token":"XCP.elmcs1WxnEEspjSkdAWPFUAoJgY19Kvs2tnnu9CU2-5vmSgMk5GXfJYvuJBsI5rmfEyjnyexQ0ihG1PM9Yi7-i83GngnSm3kKZIr0Q","version":2}} -->
