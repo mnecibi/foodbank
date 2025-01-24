@@ -4,7 +4,7 @@
 
 ## Welcome
 
-![image](/Users/mnecibi/Documents/MyProjects/Meetups/Commanded/meetup_cologne.jpeg)
+![image](./meetup_cologne.jpeg)
 
 ## About us
 
@@ -34,7 +34,7 @@ pie title Projects Programming Languages
     "Other (Java, Go ..etc)" : 60
 ```
 
-## CQRS/ES
+## CQRS/ES (Mehdi)
 
 * CQRS: Command Query Responsibility Segregation
 * ES: Event Sourcing
@@ -111,16 +111,16 @@ columns 1
   QD --> CD
 ```
 
-## Commanded
+## Commanded (
 
-CQRS + EventSourcing
+CQRS + EventSourcing + Domain driver design
 
 * Commands
 * Events
 * Aggregate
 * Projections
 
-## Some code
+## Some code - (Arne)
 
 #### Commands
 
@@ -205,7 +205,7 @@ Our events
 Foodbank.EventStore.read_all_streams_forward()
 ```
 
-### Create Tables from Events
+### Create Tables from Events (Mehdi)
 
 ```elixir
 defmodule Foodbank.DBTour do
@@ -262,15 +262,27 @@ Foodbank.Tour.Projector.start_link()
 Foodbank.DBTour |> Foodbank.Repo.all()
 ```
 
+#### Additional Ideas (Mehdi)
+
+* EventHandler
+  * notifications
+  * mails
+  * generate reports (csv/pdf documents)
+* Projections (for statistics)
+  * reseting
+  * cleanup
+
+<!-- livebook:{"break_markdown":true} -->
+
 Compare Commanded with Other Tools
 
-Commanded
+#### Commanded Pros
 
 * Event Ordering
 * Consistency
 * Sepration of conserns (Data model do not leak from one use case to another)
 
-Bonus Topics
+#### Bonus Topics
 
 * Auditing
 * Data security (GDPR)
@@ -280,11 +292,9 @@ Bonus Topics
 
 <!-- livebook:{"break_markdown":true} -->
 
-* Reference Tafel - Reality
+#### Our reference project Tafel
 
-Problems and Pros
+* Problems
+  * 6 million events (so we cannot easily reset projection without down time)
 
-* 6 million events (and the problems with that)
-*
-
-<!-- livebook:{"offset":4890,"stamp":{"token":"XCP.elmcs1WxnEEspjSkdAWPFUAoJgY19Kvs2tnnu9CU2-5vmSgMk5GXfJYvuJBsI5rmfEyjnyexQ0ihG1PM9Yi7-i83GngnSm3kKZIr0Q","version":2}} -->
+<!-- livebook:{"offset":5143,"stamp":{"token":"XCP.6wNzQSJZ9yF9vCZQmIE18cg3pyT_rbCKzz8cBXw9yP6WXbgAlD7Wv5UH8Nnk0yOEAM3PFj7rj2-GgaMWqJUrI4LhcTpIGQRinpNdUQ","version":2}} -->
