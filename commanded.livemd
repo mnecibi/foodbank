@@ -39,6 +39,15 @@ timeline
 
 #### Arne
 
+```mermaid
+timeline
+    section Education - 1 year
+      retraining programing in web development: Javascript, React, Html , Css 
+   
+    section Elixir - 1 year +
+       Developer: Elixir + Phoenix/Liveview 
+```
+
 <!-- livebook:{"break_markdown":true} -->
 
 ### Inspired Consulting GmbH
@@ -192,6 +201,8 @@ defmodule Event.TourCreated do
 end
 ```
 
+
+
 #### Aggregate
 
 <!-- livebook:{"break_markdown":true} -->
@@ -211,11 +222,13 @@ defmodule Foodbank.Tour.Aggregate do
     field(:locations, [map()])
   end
 
-  def execute(_, %Command.CreateTour{tour_id: tour_id, name: name, locations: locations}) do
+  #Crate Event
+  def execute(_agg, %Command.CreateTour{tour_id: tour_id, name: name, locations: locations}) do
     %Event.TourCreated{tour_id: tour_id, name: name, locations: locations}
   end
 
-  def apply(_, %Event.TourCreated{} = event) do
+  #Update Aggregate
+  def apply(_agg, %Event.TourCreated{} = event) do
     %__MODULE__{tour_id: event.tour_id, name: event.name, locations: event.locations}
   end
 end
@@ -358,4 +371,4 @@ Compare Commanded with Other Tools
 * Problems
   * 6 million events (so we cannot easily reset projection without down time)
 
-<!-- livebook:{"offset":6538,"stamp":{"token":"XCP._yNu_Ja0zwP8n2qx9SZi9GtaMe2KclBEvyus-elVZJtT95gKB1adXWabSGRtzdpcPuVflE7hVkb3wDm7CFiFKbGAsPJfpekOxL7pUQ","version":2}} -->
+<!-- livebook:{"offset":6793,"stamp":{"token":"XCP.oJHXEwp7t4Y-cpQ5Z6RybgebqPp4HtDNJzESaGJi-Hep0nHjcbWNKIFS3q9LBvVEh6T8n_MJDl6h9Ne40B25zH7MQ64mxrOLlzm49b6CwGGXUs-FR7rFZqzO3KVM3YcJhJoD7hxztGch","version":2}} -->
