@@ -1,16 +1,29 @@
-<!-- livebook:{"file_entries":[{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/mnecibi/Documents/MyProjects/Meetups/Commanded/meetup_cologne.jpeg"},"name":"meetup_cologne.jpeg","type":"file"}]} -->
+<!-- livebook:{"file_entries":[{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/mnecibi/Documents/MyProjects/Meetups/Commanded/foodbank/data/meetup_cologne.jpeg"},"name":"meetup_cologne.jpeg","type":"file"}]} -->
 
 # Commanded: From theory to reality
 
+```elixir
+logo = Application.app_dir(:foodbank) <> "/priv/meetup_cologne.jpeg"
+
+# File.read!("priv/meetup_cologne.jpeg")
+
+```
+
 ## Welcome
 
-![image](./meetup_cologne.jpeg)
+![image](http://localhost:8080/foodbank/priv/meetup_cologne.jpeg)
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Presentation + Code Examples
+
+![image](http://localhost:8080/foodbank/data/github_qr_code.png)
+
+https://github.com/mnecibi/foodbank
 
 ## About us
 
-### Mehdi Necibi
-
-<!-- livebook:{"break_markdown":true} -->
+### Mehdi
 
 ```mermaid
 timeline
@@ -26,7 +39,9 @@ timeline
 
 #### Arne
 
-## Inspired Consulting GmbH
+<!-- livebook:{"break_markdown":true} -->
+
+### Inspired Consulting GmbH
 
 ```mermaid
 pie title Projects Programming Languages
@@ -34,12 +49,7 @@ pie title Projects Programming Languages
     "Other (Java, Go ..etc)" : 60
 ```
 
-## CQRS/ES (Mehdi)
-
-* CQRS: Command Query Responsibility Segregation
-* ES: Event Sourcing
-
-<!-- livebook:{"break_markdown":true} -->
+## Core concepts
 
 ### Traditional System
 
@@ -58,39 +68,9 @@ columns 1
   C --> D
 ```
 
-## ES
-
-### Event Sourcing
-
-```mermaid
-block-beta
-columns 1
-  block:CO
-    A["Store Operations"]
-    CD[("Event Store")]
-  end
-  space
-  block:QO
-    B["Query Operations
-(read/search/scan)"]
-    QD[("Query DB")]
-  end
-  A --> CD 
-  B --> QD
-  CD --> QD
-```
-
 <!-- livebook:{"break_markdown":true} -->
 
-##### Real examples:
-
-* Git
-  * State: Files
-  * Events: Commits
-
-## CQRS
-
-### CQRS System
+### CQRS (Command Query Responsibility Segregation)
 
 ```mermaid
 block-beta
@@ -111,7 +91,67 @@ columns 1
   QD --> CD
 ```
 
-## Commanded (
+<!-- livebook:{"break_markdown":true} -->
+
+### Event Sourcing
+
+```mermaid
+timeline
+      Event 1 : BankAccountCreated : account_id 1 <br> initial_balance 0€
+      Event 2 : MoneyDeposited : account_id 1 <br> amount 100€
+      Event 3 : MoneyWithdraw : account_id 1 <br> amount 100€
+
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Commanded
+
+```mermaid
+block-beta
+  columns 5
+  space
+  block:ui_top:3
+    columns 2
+
+    UI1
+    UI2
+  end
+
+  space
+  UI
+
+  block:logic_group:3
+    columns 1
+
+    block:QS
+      columns 2
+      QM1["Query Model 1"]
+      QM2["Query Model 2"]
+    end
+
+    block:CS
+      columns 2
+
+      CM["Command Model"]
+    end
+  end
+
+  block:db_group
+    columns 1
+
+    QDB[("Query DB")]
+    space
+    EDB[("EventStore")]
+  end
+UI1 --> QM1
+UI2 --> QM2
+QS --> QDB
+CS --> EDB
+UI --> CM
+```
+
+<!-- livebook:{"break_markdown":true} -->
 
 CQRS + EventSourcing + Domain driver design
 
@@ -131,6 +171,7 @@ defmodule Command.CreateTour do
   typedstruct do
     field(:tour_id, binary())
     field(:name, String.t())
+    field(:locations, [map()])
   end
 end
 ```
@@ -140,10 +181,13 @@ end
 ```elixir
 defmodule Event.TourCreated do
   use TypedStruct
+  use Foodbank.Event.EctoJsonSerializer.Decoder
+  use Foodbank.Event.EctoJsonSerializer.Upcaster
 
   typedstruct do
     field(:tour_id, binary())
     field(:name, String.t())
+    field(:locations, [map()])
   end
 end
 ```
@@ -164,14 +208,15 @@ defmodule Foodbank.Tour.Aggregate do
   typedstruct do
     field(:tour_id, binary())
     field(:name, String.t())
+    field(:locations, [map()])
   end
 
-  def execute(_, %Command.CreateTour{tour_id: tour_id, name: name}) do
-    %Event.TourCreated{tour_id: tour_id, name: name}
+  def execute(_, %Command.CreateTour{tour_id: tour_id, name: name, locations: locations}) do
+    %Event.TourCreated{tour_id: tour_id, name: name, locations: locations}
   end
 
   def apply(_, %Event.TourCreated{} = event) do
-    %__MODULE__{tour_id: event.tour_id, name: event.name}
+    %__MODULE__{tour_id: event.tour_id, name: event.name, locations: event.locations}
   end
 end
 
@@ -192,17 +237,25 @@ end
 #### Let's create a tour
 
 ```elixir
- %Command.CreateTour{
+%Command.CreateTour{
   tour_id: Ecto.UUID.generate(),
-  name: "My Tour 2"
+  name: "My Tour",
+  locations: [
+    %{
+      address: "Aldi Cologne",
+      type: "pickup"
+    },
+    %{
+      address: "Lidl Cologne",
+      type: "pickup"
+    }
+  ]
 }
 |> Foodbank.Router.dispatch()
 ```
 
-Our events
-
 ```elixir
-Foodbank.EventStore.read_all_streams_forward()
+{:ok, events} = Foodbank.EventStore.read_all_streams_forward()
 ```
 
 ### Create Tables from Events (Mehdi)
@@ -216,6 +269,7 @@ defmodule Foodbank.DBTour do
   @primary_key {:tour_id, Ecto.UUID, autogenerate: false}
   typed_schema "tours" do
     field :name, :string
+    field :locations, {:array, :map}
   end
 
   def changeset(tour \\ %__MODULE__{}, attrs) do
@@ -224,21 +278,22 @@ defmodule Foodbank.DBTour do
   end
 end
 
-defmodule Migrations.CreateTour do
+defmodule Migrations.CreateTourTable do
   use Ecto.Migration
 
   def change do
     create table(:tours, primary_key: false) do
       add(:tour_id, :uuid, primary_key: true)
       add(:name, :name)
+      add(:locations, :jsonb)
     end
   end
 end
 
-Ecto.Migrator.up(Foodbank.Repo, 1, Migrations.CreateTour)
+Ecto.Migrator.up(Foodbank.Repo, 1, Migrations.CreateTourTable)
 ```
 
-Populate the `tours` table using a Projector
+### Populate the `tours` table using a Projector
 
 ```elixir
 defmodule Foodbank.Tour.Projector do
@@ -249,17 +304,21 @@ defmodule Foodbank.Tour.Projector do
   use Commanded.Projections.Ecto, name: "TourProjection", repo: Foodbank.Repo
 
   project(%TourCreated{} = event, _, fn multi ->
-    Ecto.Multi.insert(multi, :tour, %DBTour{tour_id: event.tour_id, name: event.name})
+    Ecto.Multi.insert(multi, :tour, %DBTour{tour_id: event.tour_id, name: event.name, locations: event.locations})
   end)
 end
 ```
 
 ```elixir
-Foodbank.Tour.Projector.start_link()
+Foodbank.Tour.Projector.start_link(application: Foodbank.Commanded)
 ```
 
 ```elixir
 Foodbank.DBTour |> Foodbank.Repo.all()
+```
+
+```elixir
+
 ```
 
 #### Additional Ideas (Mehdi)
@@ -285,6 +344,8 @@ Compare Commanded with Other Tools
 #### Bonus Topics
 
 * Auditing
+* Debugging
+* Historic State (Time Travel)
 * Data security (GDPR)
 * Authentication
 * Trackability Tracability
@@ -297,4 +358,4 @@ Compare Commanded with Other Tools
 * Problems
   * 6 million events (so we cannot easily reset projection without down time)
 
-<!-- livebook:{"offset":5143,"stamp":{"token":"XCP.6wNzQSJZ9yF9vCZQmIE18cg3pyT_rbCKzz8cBXw9yP6WXbgAlD7Wv5UH8Nnk0yOEAM3PFj7rj2-GgaMWqJUrI4LhcTpIGQRinpNdUQ","version":2}} -->
+<!-- livebook:{"offset":6538,"stamp":{"token":"XCP._yNu_Ja0zwP8n2qx9SZi9GtaMe2KclBEvyus-elVZJtT95gKB1adXWabSGRtzdpcPuVflE7hVkb3wDm7CFiFKbGAsPJfpekOxL7pUQ","version":2}} -->

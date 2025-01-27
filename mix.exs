@@ -35,7 +35,7 @@ defmodule Foodbank.MixProject do
 
   defp aliases do
     [
-      setup: ["reset_es", "ecto.reset"],
+      setup: ["reset_es", "ecto.reset", "ecto.migrate"],
       setup_es: ["event_store.create", "event_store.init"],
       reset_es: ["event_store.drop", "event_store.create", "event_store.init"],
       "ecto.setup": ["ecto.create", "ecto.migrate"],
