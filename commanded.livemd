@@ -11,13 +11,13 @@ logo = Application.app_dir(:foodbank) <> "/priv/meetup_cologne.jpeg"
 
 ## Welcome
 
-![image](http://localhost:8080/foodbank/priv/meetup_cologne.jpeg)
+![image](http://localhost:8080/data/meetup_cologne.jpeg)
 
 <!-- livebook:{"break_markdown":true} -->
 
 ### Presentation + Code Examples
 
-![image](http://localhost:8080/foodbank/data/github_qr_code.png)
+![image](http://localhost:8080/data/github_qr_code.png)
 
 https://github.com/mnecibi/foodbank
 
@@ -38,6 +38,15 @@ timeline
 <!-- livebook:{"break_markdown":true} -->
 
 #### Arne
+
+```mermaid
+timeline
+    section Education - 1 year
+      Retraining programing in web development: Javascript, React, Html , Css 
+   
+    section Elixir - 1 year +
+       FullStack Developer: Elixir + Phoenix/Liveview 
+```
 
 <!-- livebook:{"break_markdown":true} -->
 
@@ -242,12 +251,16 @@ end
   name: "My Tour",
   locations: [
     %{
-      address: "Aldi Cologne",
-      type: "pickup"
+      address: "Avenue des champs-élysées, Paris",
+      market_name: "Aldi"
     },
     %{
-      address: "Lidl Cologne",
-      type: "pickup"
+      address: "Place de la concorde, Paris",
+      market_name: "Lidl"
+    },
+    %{
+      address: "Place vendôme, Paris",
+      market_name: "Lidl"
     }
   ]
 }
@@ -258,7 +271,7 @@ end
 {:ok, events} = Foodbank.EventStore.read_all_streams_forward()
 ```
 
-### Create Tables from Events (Mehdi)
+### Create Tables from Events
 
 ```elixir
 defmodule Foodbank.DBTour do
@@ -318,44 +331,95 @@ Foodbank.DBTour |> Foodbank.Repo.all()
 ```
 
 ```elixir
+defmodule Foodbank.DBMarketStatistics do
+  use Ecto.Schema
+  use TypedEctoSchema
+  
+  @primary_key false
+  typed_schema "market_statistics" do
+    field :name, :string, primary_key: true
+    field :nb_tour_usage, :integer
+  end
+end
 
+defmodule Migrations.CreateMarketStatisticsTable do
+  use Ecto.Migration
+
+  def change do
+    create table(:market_statistics, primary_key: false) do
+      add(:name, :name, primary_key: true)
+      add(:nb_tour_usage, :integer)
+    end
+  end
+end
+
+Ecto.Migrator.up(Foodbank.Repo, 2, Migrations.CreateMarketStatisticsTable)
 ```
 
-#### Additional Ideas (Mehdi)
+```elixir
+Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
+```
 
-* EventHandler
-  * notifications
-  * mails
-  * generate reports (csv/pdf documents)
-* Projections (for statistics)
-  * reseting
-  * cleanup
+```elixir
+defmodule Foodbank.Statistics.Projector do
+  alias Foodbank.DBMarketStatistics
+
+  alias Event.TourCreated
+
+  use Commanded.Projections.Ecto, name: "StatisticsProjection", repo: Foodbank.Repo
+
+  project(%TourCreated{} = event, _, fn multi ->
+    Enum.reduce(event.locations, multi, fn location, acc_multi -> 
+      
+      Ecto.Multi.insert(acc_multi, "market_statistics_#{Ecto.UUID.generate()}", 
+        %DBMarketStatistics{
+          name: Map.get(location, "market_name"), nb_tour_usage: 1
+        },
+        on_conflict: [inc: [nb_tour_usage: 1]],
+        conflict_target: [:name])
+      
+    end)
+  end)
+end
+```
+
+```elixir
+Foodbank.Statistics.Projector.start_link(application: Foodbank.Commanded)
+```
+
+```elixir
+Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
+```
+
+#### More use cases
+
+* Notifications
+* Mails
+* Generate reports (csv/pdf documents)
 
 <!-- livebook:{"break_markdown":true} -->
-
-Compare Commanded with Other Tools
 
 #### Commanded Pros
 
-* Event Ordering
-* Consistency
+* Simplifying complex domain modeling
+* Provide tools to handle events and projections
 * Sepration of conserns (Data model do not leak from one use case to another)
+
+#### Commanded Cons
+
+* Complexiting (Learning Curve)
+* Managing consistency in projections
+* Event Replay (for large event stores)
 
 #### Bonus Topics
 
-* Auditing
-* Debugging
+* Debugging and Error Recovery
 * Historic State (Time Travel)
 * Data security (GDPR)
 * Authentication
-* Trackability Tracability
-* Statistics
 
 <!-- livebook:{"break_markdown":true} -->
 
-#### Our reference project Tafel
+![questions?](http://localhost:8080/data/questions_meme.jpg)
 
-* Problems
-  * 6 million events (so we cannot easily reset projection without down time)
-
-<!-- livebook:{"offset":6538,"stamp":{"token":"XCP._yNu_Ja0zwP8n2qx9SZi9GtaMe2KclBEvyus-elVZJtT95gKB1adXWabSGRtzdpcPuVflE7hVkb3wDm7CFiFKbGAsPJfpekOxL7pUQ","version":2}} -->
+<!-- livebook:{"offset":8237,"stamp":{"token":"XCP.Q7ZbWrOOgUqkqDudnEUwjmIhmfzWKsWc4YiFlJQSaVJMmU-h5QS_LoxSNErUJr2wUN4bfaZ6sheGYXr7gyf1fWKUVDP_gHZz_Wdj3w","version":2}} -->
