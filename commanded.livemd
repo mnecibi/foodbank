@@ -2,13 +2,6 @@
 
 # Commanded: From theory to reality
 
-```elixir
-logo = Application.app_dir(:foodbank) <> "/priv/meetup_cologne.jpeg"
-
-# File.read!("priv/meetup_cologne.jpeg")
-
-```
-
 ## Welcome
 
 ![image](http://localhost:8080/data/meetup_cologne.jpeg)
@@ -42,10 +35,10 @@ timeline
 ```mermaid
 timeline
     section Education - 1 year
-      Retraining programing in web development: Javascript, React, Html , Css 
+      Retraining programing in Web development: Javascript, React, HTML, CSS 
    
     section Elixir - 1 year +
-       FullStack Developer: Elixir + Phoenix/Liveview 
+       Fullstack Developer: Elixir + Phoenix/Liveview 
 ```
 
 <!-- livebook:{"break_markdown":true} -->
@@ -62,6 +55,12 @@ pie title Projects Programming Languages
 
 ### Traditional System
 
+<br />
+
+<br />
+
+<br />
+
 ```mermaid
 block-beta
 columns 1
@@ -77,9 +76,25 @@ columns 1
   C --> D
 ```
 
+<br />
+
+<br />
+
+<br />
+
+<br />
+
 <!-- livebook:{"break_markdown":true} -->
 
 ### CQRS (Command Query Responsibility Segregation)
+
+<br />
+
+<br />
+
+<br />
+
+<br />
 
 ```mermaid
 block-beta
@@ -100,9 +115,19 @@ columns 1
   QD --> CD
 ```
 
+<br />
+
+<br />
+
+<br />
+
+<br />
+
 <!-- livebook:{"break_markdown":true} -->
 
 ### Event Sourcing
+
+<br />
 
 ```mermaid
 timeline
@@ -111,6 +136,8 @@ timeline
       Event 3 : MoneyWithdraw : account_id 1 <br> amount 100€
 
 ```
+
+<br />
 
 <!-- livebook:{"break_markdown":true} -->
 
@@ -162,14 +189,20 @@ UI --> CM
 
 <!-- livebook:{"break_markdown":true} -->
 
-CQRS + EventSourcing + Domain driver design
+### Commanded = CQRS + EventSourcing + Domain driver design
+
+<br />
 
 * Commands
 * Events
 * Aggregate
 * Projections
 
-## Some code - (Arne)
+<br />
+
+<br />
+
+## Code Example - Commanded Project
 
 #### Commands
 
@@ -214,19 +247,26 @@ Domain Driven Design
 defmodule Foodbank.Tour.Aggregate do
   use TypedStruct
 
+  alias __MODULE__
+
   typedstruct do
     field(:tour_id, binary())
     field(:name, String.t())
     field(:locations, [map()])
   end
 
-  def execute(_, %Command.CreateTour{tour_id: tour_id, name: name, locations: locations}) do
-    %Event.TourCreated{tour_id: tour_id, name: name, locations: locations}
+  def execute(aggregate, %Command.CreateTour{tour_id: tour_id, name: name, locations: locations}) do
+    with :ok <- validate_does_not_exist(aggregate) do
+      %Event.TourCreated{tour_id: tour_id, name: name, locations: locations}
+    end
   end
 
-  def apply(_, %Event.TourCreated{} = event) do
-    %__MODULE__{tour_id: event.tour_id, name: event.name, locations: event.locations}
+  def apply(_aggregate, %Event.TourCreated{} = event) do
+    %Aggregate{tour_id: event.tour_id, name: event.name, locations: event.locations}
   end
+
+  def validate_does_not_exist(%Aggregate{tour_id: nil}), do: :ok
+  def validate_does_not_exist(%Aggregate{}), do: {:error, :document_already_exists}
 end
 
 ```
@@ -242,6 +282,19 @@ defmodule Foodbank.Router do
   dispatch([Command.CreateTour], to: Foodbank.Tour.Aggregate)
 end
 ```
+
+```mermaid
+graph TD;
+    A[Command: CreateTour] --> B[Router]
+    B --> |dispatch: command| C[Aggregate: ]
+    C --> |execute: create event| D[Event DB]
+    C -->|apply: update state from events| C[Aggregate] 
+    
+  
+    
+```
+
+<!-- livebook:{"break_markdown":true} -->
 
 #### Let's create a tour
 
@@ -322,6 +375,18 @@ defmodule Foodbank.Tour.Projector do
 end
 ```
 
+```mermaid
+graph TD;
+    
+    
+     B[Projector]
+    B -->|project| C[Projection DB]
+    C -->  D[Query]
+    D -->  E[UI]
+    
+    
+```
+
 ```elixir
 Foodbank.Tour.Projector.start_link(application: Foodbank.Commanded)
 ```
@@ -363,7 +428,6 @@ Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
 ```elixir
 defmodule Foodbank.Statistics.Projector do
   alias Foodbank.DBMarketStatistics
-
   alias Event.TourCreated
 
   use Commanded.Projections.Ecto, name: "StatisticsProjection", repo: Foodbank.Repo
@@ -377,10 +441,20 @@ defmodule Foodbank.Statistics.Projector do
         },
         on_conflict: [inc: [nb_tour_usage: 1]],
         conflict_target: [:name])
-      
     end)
   end)
 end
+```
+
+```mermaid
+graph TD;
+    
+    A[Event DB]
+    A --> B[Tour.Projector]
+    B -->|project| C[Projection Tables]
+    A --> D[Statistics.Projector]
+    D -->|project| E[Statistics Tables]
+    
 ```
 
 ```elixir
@@ -422,4 +496,4 @@ Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
 
 ![questions?](http://localhost:8080/data/questions_meme.jpg)
 
-<!-- livebook:{"offset":8237,"stamp":{"token":"XCP.Q7ZbWrOOgUqkqDudnEUwjmIhmfzWKsWc4YiFlJQSaVJMmU-h5QS_LoxSNErUJr2wUN4bfaZ6sheGYXr7gyf1fWKUVDP_gHZz_Wdj3w","version":2}} -->
+<!-- livebook:{"offset":8541,"stamp":{"token":"XCP.sAtfda-6kd6AQ2foHhw9tQa3cGDM5dvJBPjjv9un8YyP3zRC06dfe7Tob26jWxwOUm780dokyo91UVJu49fnQ27dxXz6UOS_gccNJA","version":2}} -->
