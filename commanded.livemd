@@ -25,7 +25,7 @@ timeline
     section Java - 5 years
       Fullstack Developer: Java + JS Frontend frameworks + Adobe Products
     section Elixir - 2 years
-      Fullstack Developer: Elixir + Phoenix/Liveview + Docker/Kubernetes
+      Fullstack Developer: Elixir/Commanded + Phoenix/Liveview
 ```
 
 <!-- livebook:{"break_markdown":true} -->
@@ -265,8 +265,8 @@ defmodule Foodbank.Tour.Aggregate do
     %Aggregate{tour_id: event.tour_id, name: event.name, locations: event.locations}
   end
 
-  def validate_does_not_exist(%Aggregate{tour_id: nil}), do: :ok
-  def validate_does_not_exist(%Aggregate{}), do: {:error, :document_already_exists}
+  defp validate_does_not_exist(%Aggregate{tour_id: nil}), do: :ok
+  defp validate_does_not_exist(%Aggregate{}), do: {:error, :document_already_exists}
 end
 
 ```
@@ -375,18 +375,6 @@ defmodule Foodbank.Tour.Projector do
 end
 ```
 
-```mermaid
-graph TD;
-    
-    
-     B[Projector]
-    B -->|project| C[Projection DB]
-    C -->  D[Query]
-    D -->  E[UI]
-    
-    
-```
-
 ```elixir
 Foodbank.Tour.Projector.start_link(application: Foodbank.Commanded)
 ```
@@ -446,17 +434,6 @@ defmodule Foodbank.Statistics.Projector do
 end
 ```
 
-```mermaid
-graph TD;
-    
-    A[Event DB]
-    A --> B[Tour.Projector]
-    B -->|project| C[Projection Tables]
-    A --> D[Statistics.Projector]
-    D -->|project| E[Statistics Tables]
-    
-```
-
 ```elixir
 Foodbank.Statistics.Projector.start_link(application: Foodbank.Commanded)
 ```
@@ -464,6 +441,26 @@ Foodbank.Statistics.Projector.start_link(application: Foodbank.Commanded)
 ```elixir
 Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
 ```
+
+<br />
+
+<br />
+
+```mermaid
+graph TD;
+    
+    A[Event DB]
+    A --> B[Tour.Projector]
+    B -->|project| C[Tour Tables]
+    A --> D[Statistics.Projector]
+    D -->|project| E[Statistics Tables]
+```
+
+<br />
+
+<br />
+
+<!-- livebook:{"break_markdown":true} -->
 
 #### More use cases
 
@@ -484,16 +481,17 @@ Foodbank.DBMarketStatistics |> Foodbank.Repo.all()
 * Complexiting (Learning Curve)
 * Managing consistency in projections
 * Event Replay (for large event stores)
+* Not applicable to existing applications
 
 #### Bonus Topics
 
 * Debugging and Error Recovery
 * Historic State (Time Travel)
 * Data security (GDPR)
-* Authentication
+* Authorization
 
 <!-- livebook:{"break_markdown":true} -->
 
 ![questions?](http://localhost:8080/data/questions_meme.jpg)
 
-<!-- livebook:{"offset":8541,"stamp":{"token":"XCP.sAtfda-6kd6AQ2foHhw9tQa3cGDM5dvJBPjjv9un8YyP3zRC06dfe7Tob26jWxwOUm780dokyo91UVJu49fnQ27dxXz6UOS_gccNJA","version":2}} -->
+<!-- livebook:{"offset":9103,"stamp":{"token":"XCP.dCKI28JhQfO37zGuCMySiPAndMJxs0fropspTJTFf1c2Llkvnp2WiN9rIm9kG9VDWzZcNpCy11BjNwkIlWRZNRd3vMWtLi1zYmEryUYrmyYRKWVUAHlSif1xUj5dcf1_suImWCTbltku","version":2}} -->
