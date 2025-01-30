@@ -283,6 +283,19 @@ defmodule Foodbank.Router do
 end
 ```
 
+```mermaid
+graph TD;
+    A[Command: CreateTour] --> B[Router]
+    B --> |dispatch: command| C[Aggregate: ]
+    C --> |execute: create event| D[Event DB]
+    C -->|apply: update state from events| C[Aggregate] 
+    
+  
+    
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
 #### Let's create a tour
 
 ```elixir
@@ -362,6 +375,18 @@ defmodule Foodbank.Tour.Projector do
 end
 ```
 
+```mermaid
+graph TD;
+    
+    
+     B[Projector]
+    B -->|project| C[Projection DB]
+    C -->  D[Query]
+    D -->  E[UI]
+    
+    
+```
+
 ```elixir
 Foodbank.Tour.Projector.start_link(application: Foodbank.Commanded)
 ```
@@ -419,6 +444,17 @@ defmodule Foodbank.Statistics.Projector do
     end)
   end)
 end
+```
+
+```mermaid
+graph TD;
+    
+    A[Event DB]
+    A --> B[Tour.Projector]
+    B -->|project| C[Projection Tables]
+    A --> D[Statistics.Projector]
+    D -->|project| E[Statistics Tables]
+    
 ```
 
 ```elixir
